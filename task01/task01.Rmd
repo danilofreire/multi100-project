@@ -1,0 +1,175 @@
+---
+title:  |
+        | Multi100 Project: Does Warfare Matter? Severity, Duration, and Outcomes of Civil Wars
+author: 
+  - Danilo Freire[^danilo]
+date: \today
+abstractspacing: double
+keywords: R Markdown; pandoc; template
+fontsize: 12pt
+margin: 2cm
+urlcolor: darkblue
+linkcolor: Mahogany
+citecolor: Mahogany
+spacing: double
+papersize: a4paper
+bibliography: references.bib
+biblio-style: apalike
+output:
+  pdf_document:
+    citation_package: natbib
+    fig_caption: yes
+    number_sections: yes
+    keep_tex: no
+    toc: no
+    toc_depth: 3
+    template: template.latex
+---
+
+[^danilo]: Senior Lecturer, School of Social and Political Sciences, University
+of Lincoln, Lincoln, UK, <dfreire@lincoln.ac.uk>,
+<https://danilofreire.github.io>. 
+
+# Introduction
+\label{sec:intro}
+
+This Markdown file contains the code I used to replicate Figure 01 (p. 1399)
+and Table 01 (p. 1400-01) in "_Does Warfare Matter? Severity, Duration, and
+Outcomes of Civil Wars_" by Laia Balcells and Stathis N. Kalyvas (2014). The
+paper was originally published in the _Journal of Conflict Resolution_. The
+claim to be evaluated here is that "SNC ["symmetric nonconventional"] conflicts
+are likely to last longer than conventional conflicts but likely to be shorter
+than irregular ones (Hypothesis 1)." The article files are available at:
+<https://osf.io/3j72h/?view_only=5b822a6c354940c5a5127c97d2c588fd>.
+
+The replication indicates that the result is indeed robust and supports the
+authors' main claims. I was able to successfully replicate both Figure 01 and
+Table 01 using the authors' [Stata `do`
+files](https://osf.io/js2my/?view_only=5b822a6c354940c5a5127c97d2c588fd). I did
+not find any errors in their scripts. The analyses were conducted using Stata
+15 and the [`Statamarkdown`](https://github.com/Hemken/Statamarkdown) package
+for `R` [@rbase2022].
+
+This replication is part of the [Multi100 Project](https://osf.io/7snkz), a
+crowdsourced project whose goal is to assess the robustness of findings in the
+social and behavioural sciences. My researcher ID is 9EFM2 and all files
+required to reproduce the contents of this document are available at:
+<https://github.com/danilofreire/multi100-project>. Feel free to contact me at
+<danilofreire@gmail.com> or <dfreire@lincoln.ac.uk> if you have any questions.
+
+# Figure 01 - Kaplan Meier Survival Estimates 
+\label{sec:figure01}
+
+In this section, I replicate Figure 01 in @balcells2014does [p. 1399]. First, I
+install the packages required for the analysis.
+
+```{r packages, message=FALSE, warning=FALSE, echo=TRUE, cache=TRUE}
+# Install necessary packages
+r <- getOption("repos")
+r["CRAN"] <- "https://cran.rstudio.com/"
+options(repos = r)
+
+# List of packages
+packages <- c("devtools", "knitr", "rmarkdown")
+
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+invisible(lapply(packages, library, character.only = TRUE))
+
+# Install and load Statamarkdown
+devtools::install_github("Hemken/Statamarkdown")
+library(Statamarkdown)
+```
+
+Then I use [the authors' Stata
+script](https://osf.io/js2my/?view_only=5b822a6c354940c5a5127c97d2c588fd) to
+create some of the variables included in the models.
+
+```{stata data-wrangling, error=FALSE, warning=FALSE, eval=FALSE}
+// Load the dataset
+sysuse ./TR_panelformat_Replication.dta
+
+// Create variable warend
+sort id year
+gen warend=0
+replace warend=1 if year==yrend
+
+// Some months have 31 days, others 30, 29, 28.
+gen curyear=mdy(moend,31,yrend) if yrend!=. & year==yrend & moend!=.
+format %td curyear
+replace curyear=mdy(moend,30,yrend) if yrend!=. & year==yrend & moend!=. & curyear==.
+replace curyear=mdy(moend,29,yrend) if yrend!=. & year==yrend & moend!=. & curyear==.
+replace curyear=mdy(moend,28,yrend) if yrend!=. & year==yrend & moend!=. & curyear==.
+replace curyear=date("3112"+string(year),"DMY") if curyear==.
+
+// Create variable warbegin
+gen warbegin=0
+sort id year
+by id: replace warbegin=1 if _n==1 
+
+// Create variable origyear
+gen origyear=.
+format %td origyear
+replace origyear=mdy(most,1,yrst) if year==yrst & most!=.
+replace origyear=mdy(1,1,yrst) if year==yrst & most==.
+replace origyear=date("3112"+string(year-1), "DMY") if year!=yrst
+
+// Kaplan Meier estimates
+stset curyear, id(id) failure(warend==1) time0(origyear) origin(time origyear) scale(30.41667)
+
+// Plot survival curve
+sts graph, by(technologyrebellion) ///
+legend(label(1 "Conventional") label (2 "Irregular") label(3 "SNC"))
+
+// Export graph
+quietly graph export kaplan-meier.pdf, replace
+
+// Save dataset
+save df.dta
+```
+
+![Kaplan Meier Survival Estimates](kaplan-meier.pdf)
+
+# Table 01 - Weibull Regression on Civil War Duration
+
+The code below replicates models 1 to 4 reported in Table 01
+[@balcells2014does, 1400]. All estimates are identical to those included in the
+main paper.
+
+```{stata table01, error=FALSE, warning=FALSE, echo=TRUE}
+// Load dataset
+sysuse ./df.dta
+
+// Set data
+stset curyear, id(id) failure(warend==1) time0(origyear) origin(time origyear) scale(30.41667)
+
+// Model 01
+streg i.technologyrebellion, d(w) nolog vce(robust) time
+
+// Model 02
+streg i.technologyrebellion post1990 lmtnest ///
+lpop gdpenl oil ethfrac deml, d(w) nolog  vce(robust) time
+
+// Model 03
+streg i.technologyrebellion post1990 lmtnest ///
+lpop gdpenl oil ethfrac deml milper Extsupp_gov_bi ///
+Extsupp_reb_bi, d(w) nolog  vce(robust) time 
+
+// Model 04
+streg i.technologyrebellion post1990 lmtnest /// 
+lpop gdpenl oil ethfrac deml milper Extsupp_gov_bi ///
+Extsupp_reb_bi western eeurop asia ssafrica lamerica, ///
+d(w) nolog  vce(robust) time 
+```
+
+# Session Information
+\label{sec:sessionInfo}
+
+```{r session, cache=T}
+sessionInfo()
+```
+
+\setlength{\parindent}{0cm}
+\setlength{\parskip}{5pt}
