@@ -11,10 +11,4 @@ original study are available at:
 authors' claim is that "_irregular conflicts last_ [...] _longer than all other
 types of conflict_ [...] (p. 1390)."
 
-### To Do
-
-* Upload the scripts to: <https://osf.io/3txyr/>.
-
-* Complete the post-analysis survey at: <https://forms.gle/KDdTRsQY45gPMCU1A>.
-
-* Deadline: 17th of July, 2022.
+The replication provides support for the original hypothesis.
