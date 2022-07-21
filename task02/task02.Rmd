@@ -1,0 +1,135 @@
+---
+title:  |
+        | Multi100 Project - Task 02: 
+        | Does Warfare Matter? Severity, Duration, and Outcomes of Civil Wars
+author: 
+  - Danilo Freire[^danilo]
+date: \today
+abstractspacing: double
+fontsize: 12pt
+margin: 2cm
+urlcolor: darkblue
+linkcolor: Mahogany
+citecolor: Mahogany
+spacing: double
+papersize: a4paper
+bibliography: ../task01/references.bib
+biblio-style: apalike
+output:
+  pdf_document:
+    citation_package: natbib
+    fig_caption: yes
+    number_sections: yes
+    keep_tex: no
+    toc: no
+    toc_depth: 3
+    template: ../task01/template.latex
+---
+
+[^danilo]: Senior Lecturer, School of Social and Political Sciences, University
+of Lincoln, Lincoln, UK, <dfreire@lincoln.ac.uk>,
+<https://danilofreire.github.io>. Replication materials are available
+at: <https://github.com/danilofreire/multi100-project>.
+
+# Introduction
+\label{sec:intro}
+
+In this second task, I will conduct an additional analysis using the
+"Technologies of Rebellion" dataset from @balcells2014does. The instructions
+were as follows: "_You should use the 'Technologies of Rebellion' (TR) instead
+of the 'Peace Research Institute of Oslo' (PRIO) dataset. You should control
+for: Post 1990, rough terrain, population, GDP per capita, oil exporter, ethnic
+fractionalization, democracy, military personnel, external support for
+government, external support for rebels, region._"
+
+The replication confirms the authors' main claim, that irregular conflicts tend
+to last longer than conventional and symmetric non-conventional (SNC) civil
+wars. I use Stata version 15 and R version 4.2.1 to conduct and report the analysis.
+
+# Analysis
+\label{sec:analysis}
+
+The code below replicates models 4 reported in Table 01 [@balcells2014does,
+1400]. My estimates are identical to those included in the main paper.
+
+First, I install the packages required for the analysis.
+
+```{r packages, message=FALSE, warning=FALSE, echo=TRUE, cache=TRUE}
+# Install necessary packages
+r <- getOption("repos")
+r["CRAN"] <- "https://cran.rstudio.com/"
+options(repos = r)
+
+# List of packages
+packages <- c("devtools", "knitr", "rmarkdown")
+
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+invisible(lapply(packages, library, character.only = TRUE))
+
+# Install and load Statamarkdown
+devtools::install_github("Hemken/Statamarkdown")
+library(Statamarkdown)
+```
+
+Then I use [the authors' Stata
+script](https://osf.io/js2my/?view_only=5b822a6c354940c5a5127c97d2c588fd) to
+create some of the variables included in the models. Then, I run a Weibull
+regression to test the claim that irregular civil wars are more likely to last
+longer than conventional and non-symmetric civil conflicts. The _z_-statistic
+for the variable of interest (`Irregular`) is 2.51 and reaches standard levels
+of statistical significance. The variable coefficient is 0.869 (SE = 0.346, 95%
+CI = [0.191, 1.545]). The baseline category is conventional civil wars. The
+results are available below.
+
+```{stata analysis, error=FALSE, warning=FALSE, echo=TRUE}
+// Load the dataset
+sysuse ../task01/TR_panelformat_Replication.dta
+
+// Create variable warend
+sort id year
+gen warend=0
+replace warend=1 if year==yrend
+
+// Some months have 31 days, others 30, 29, 28.
+gen curyear=mdy(moend,31,yrend) if yrend!=. & year==yrend & moend!=.
+format %td curyear
+replace curyear=mdy(moend,30,yrend) if yrend!=. & year==yrend & moend!=. & curyear==.
+replace curyear=mdy(moend,29,yrend) if yrend!=. & year==yrend & moend!=. & curyear==.
+replace curyear=mdy(moend,28,yrend) if yrend!=. & year==yrend & moend!=. & curyear==.
+replace curyear=date("3112"+string(year),"DMY") if curyear==.
+
+// Create variable warbegin
+gen warbegin=0
+sort id year
+by id: replace warbegin=1 if _n==1 
+
+// Create variable origyear
+gen origyear=.
+format %td origyear
+replace origyear=mdy(most,1,yrst) if year==yrst & most!=.
+replace origyear=mdy(1,1,yrst) if year==yrst & most==.
+replace origyear=date("3112"+string(year-1), "DMY") if year!=yrst
+
+// Set data
+stset curyear, id(id) failure(warend==1) time0(origyear) origin(time origyear) ///
+scale(30.41667)
+
+// Model 04
+streg i.technologyrebellion post1990 lmtnest /// 
+lpop gdpenl oil ethfrac deml milper Extsupp_gov_bi ///
+Extsupp_reb_bi western eeurop asia ssafrica lamerica, ///
+d(w) nolog  vce(robust) time 
+```
+
+# Session Information
+\label{sec:sessionInfo}
+
+```{r session, cache=T}
+sessionInfo()
+```
+
+\setlength{\parindent}{0cm}
+\setlength{\parskip}{5pt}

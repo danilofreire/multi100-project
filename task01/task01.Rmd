@@ -1,11 +1,11 @@
 ---
-title:  |
-        | Multi100 Project: Does Warfare Matter? Severity, Duration, and Outcomes of Civil Wars
+title:  | 
+        | Multi100 Project - Task 01: 
+        | Does Warfare Matter? Severity, Duration, and Outcomes of Civil Wars
 author: 
   - Danilo Freire[^danilo]
 date: \today
 abstractspacing: double
-keywords: R Markdown; pandoc; template
 fontsize: 12pt
 margin: 2cm
 urlcolor: darkblue
@@ -13,7 +13,7 @@ linkcolor: Mahogany
 citecolor: Mahogany
 spacing: double
 papersize: a4paper
-bibliography: references.bib
+bibliography: ../task01/references.bib
 biblio-style: apalike
 output:
   pdf_document:
@@ -23,7 +23,7 @@ output:
     keep_tex: no
     toc: no
     toc_depth: 3
-    template: template.latex
+    template: ../task01/template.latex
 ---
 
 [^danilo]: Senior Lecturer, School of Social and Political Sciences, University
@@ -89,7 +89,7 @@ create some of the variables included in the models.
 
 ```{stata data-wrangling, error=FALSE, warning=FALSE, eval=FALSE}
 // Load the dataset
-sysuse ./TR_panelformat_Replication.dta
+sysuse ../task01/TR_panelformat_Replication.dta
 
 // Create variable warend
 sort id year
@@ -127,7 +127,7 @@ legend(label(1 "Conventional") label (2 "Irregular") label(3 "SNC"))
 quietly graph export kaplan-meier.pdf, replace
 
 // Save dataset
-save df.dta
+save ../task01/df.dta
 ```
 
 ![Kaplan Meier Survival Estimates](kaplan-meier.pdf)
@@ -140,7 +140,7 @@ main paper.
 
 ```{stata table01, error=FALSE, warning=FALSE, echo=TRUE}
 // Load dataset
-sysuse ./df.dta
+sysuse ../task01/df.dta
 
 // Set data
 stset curyear, id(id) failure(warend==1) time0(origyear) origin(time origyear) scale(30.41667)
