@@ -1,0 +1,252 @@
+---
+title:  |
+        | The Multi100 Project:
+        | Task 01
+author: 
+date: \today
+abstractspacing: double
+fontsize: 12pt
+margin: 2cm
+urlcolor: darkblue
+linkcolor: Mahogany
+citecolor: Mahogany
+spacing: double
+papersize: a4paper
+bibliography: references.bib
+biblio-style: apalike
+output:
+  pdf_document:
+    citation_package: natbib
+    fig_caption: yes
+    number_sections: yes
+    keep_tex: no
+    toc: yes
+    toc_depth: 3
+    template: article-template.latex
+---
+
+# Introduction
+\label{sec:intro}
+
+This Markdown file contains the code used to replicate the findings presented
+in the paper "The Beheading of Criminal Organizations and the Dynamics of
+Violence in Mexico" by @calderon2015beheading. My analyst ID is `9EFM2_2`, and
+the paper ID is `Caldero_n_JournConflictRes_2015_Nv99`. The claim being
+assessed is that "captures or killings of drug cartel leaders have exacerbating
+short-term effects on DTO-related violence." The article files can be accessed
+at <https://osf.io/bsv24/?view_only=84df9267c74b482fa3cf2f4dc611ee48>.
+
+The replication results support the authors' main claims, as I was able to
+replicate Models 01 and 03 in Tables 02 and 03 using the authors' Stata do
+files, available at
+<https://osf.io/6zkbg?view_only=84df9267c74b482fa3cf2f4dc611ee48>, without
+encountering any errors in their scripts. The analyses were conducted using
+Stata 15 and the `Statamarkdown` package for `R` [@rbase2022].
+
+# Replication of the Original Analysis
+\label{sec:replication}
+
+The code below replicates the results presented in Tables 2 and 3 of the paper
+(pages 18-19 and 20-21, respectively). The focus is solely on the impact of
+leadership capture on DTO-related violence, thus, only Models 1 and 3 from each
+table are replicated. The outcome of the replication aligns with the results
+presented in the paper.
+
+Initially, the data are loaded and the necessary packages for the analysis are
+installed.
+
+```{r packages, message=FALSE, warning=FALSE, echo=TRUE}
+# Install necessary packages
+r <- getOption("repos")
+r["CRAN"] <- "https://cran.rstudio.com/"
+options(repos = r)
+
+# List of packages
+packages <- c("devtools", "knitr", "rmarkdown", "tidyverse")
+
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+invisible(lapply(packages, library, character.only = TRUE))
+
+# Install and load Statamarkdown
+devtools::install_github("Hemken/Statamarkdown")
+library(Statamarkdown)
+```
+
+Subsequently, the regressions are executed using the Stata code provided by the
+authors. The results match those presented in the paper. The main variables of
+interest are `lpub_after06` and `lpub_after612`, which represent, respectively,
+the levels of homicides 1-6 months and 7-12 months after a leader's capture
+[@calderon2015beheading, 17].
+
+```{stata upper-table02-models, error=FALSE, warning=FALSE, echo=TRUE, cache=TRUE}
+// Load data
+sysuse ./replication.data.beheadings.march.15.dta, clear
+tsset idunico date
+set matsize 11000
+
+// Table 02: Upper Panel
+
+// Model 01
+quiet xi: nbreg d_homi_male_15_39 pob_male_15_39 i.date i.idunico lpub_after06 ///
+lpub_after612 lpub_after12 lieupub_after06 lieupub_after612 lieupub_after12 ///
+if treat_leader==1 & date>=563 & date<=611 &  idunico!=8037, ///
+vce(cluster idunico)
+
+estimates table, keep(lpub_after06 lpub_after612 lpub_after12 lieupub_after06 ///
+lieupub_after612 lieupub_after12) b(%9.3fc) se(%9.3fc) t(%9.3fc) p(%9.3fc) style(columns)
+ereturn list
+```
+
+```{stata upper-table02-model03, error=FALSE, warning=FALSE, echo=TRUE, cache=TRUE}
+// Model 03
+sysuse ./replication.data.beheadings.march.15.dta, clear
+tsset idunico date
+set matsize 11000
+
+quiet xi: nbreg d_homi_male_15_39 pob_male_15_39 i.date i.idunico lpub_after06 ///
+lpub_after612 lpub_after12 lieupub_after06 lieupub_after612 lieupub_after12 ///
+if date>=563 & date<=611 & idunico!=8037 [iw = weights_treat_lead_dto], ///
+vce(cluster idunico)
+
+estimates table, keep(lpub_after06 lpub_after612 lpub_after12 lieupub_after06 ///
+lieupub_after612 lieupub_after12) b(%9.3fc) se(%9.3fc) t(%9.3fc) p(%9.3fc) style(columns)
+ereturn list
+```
+
+```{stata lower-table02-model01, error=FALSE, warning=FALSE, echo=TRUE, cache=TRUE}
+// Table 02: Lower Panel
+sysuse ./replication.data.beheadings.march.15.dta, clear
+tsset idunico date
+set matsize 11000
+
+// Model 01
+quiet xi: nbreg d_homi_not_male_15_39 pob_not_male_15_39 i.date i.idunico lpub_after06 ///
+lpub_after612 lpub_after12 lieupub_after06 lieupub_after612 lieupub_after12 ///
+if treat_leader==1 & date>=563 & date<=611 & idunico!=8037, ///
+vce(cluster idunico)
+
+estimates table, keep(lpub_after06 lpub_after612 lpub_after12 lieupub_after06 ///
+lieupub_after612 lieupub_after12) b(%9.3fc) se(%9.3fc) t(%9.3fc) p(%9.3fc) style(columns)
+ereturn list
+```
+
+```{stata lower-table02-model03, error=FALSE, warning=FALSE, echo=TRUE, cache=TRUE}
+// Model 03
+sysuse ./replication.data.beheadings.march.15.dta, clear
+tsset idunico date
+set matsize 11000
+
+quiet xi: nbreg d_homi_not_male_15_39 pob_not_male_15_39 i.date i.idunico lpub_after06 ///
+lpub_after612 lpub_after12 lieupub_after06 lieupub_after612 lieupub_after12 ///
+if date>=563 & date<=611 & idunico!=8037 [iw = weights_treat_lead_rest], ///
+vce(cluster idunico)
+
+estimates table, keep(lpub_after06 lpub_after612 lpub_after12 lieupub_after06 ///
+lieupub_after612 lieupub_after12) b(%9.3fc) se(%9.3fc) t(%9.3fc) p(%9.3fc) style(columns)
+ereturn list
+```
+
+\newpage 
+
+# Reanalysis
+\label{sec:reanalysis}
+
+In this section, I present a new analysis of the four models previously
+discussed, but using a different functional form. I utilize a robust Poisson
+regression approach which effectively addresses potential arbitrary
+misspecification issues inherent in the Poisson distribution, as [suggested by
+Jeff
+Wooldridge](https://www.statalist.org/forums/forum/general-stata-discussion/general/1593251-poisson).
+While the authors appropriately utilized a negative binomial specification to
+address the issue of overdispersion, the test conducted in this section serves
+as an additional robustness check.
+
+I utilized the same control variables and weights as the original analysis, as
+I deemed them suitable for the research question and would have made the same
+choices if I were conducting the analysis with the available data.
+
+```{stata upper-table02-rep-model01, error=FALSE, warning=FALSE, echo=TRUE, cache=TRUE}
+// Load data
+sysuse ./replication.data.beheadings.march.15.dta, clear
+tsset idunico date
+set matsize 11000
+
+// Table 02: Upper Panel
+
+// Model 01
+
+quiet xi: poisson d_homi_not_male_15_39 pob_not_male_15_39 i.date i.idunico lpub_after06 ///
+lpub_after612 lpub_after12 lieupub_after06 lieupub_after612 lieupub_after12 ///
+if date>=563 & date<=611 & idunico!=8037 [iw = weights_treat_lead_rest], ///
+vce(cluster idunico)
+
+estimates table, keep(lpub_after06 lpub_after612 lpub_after12 lieupub_after06 ///
+lieupub_after612 lieupub_after12) b(%9.3fc) se(%9.3fc) t(%9.3fc) p(%9.3fc) style(columns)
+ereturn list
+```
+
+```{stata upper-table02-rep-model03, error=FALSE, warning=FALSE, echo=TRUE, cache=TRUE}
+// Model 03
+sysuse ./replication.data.beheadings.march.15.dta, clear
+tsset idunico date
+set matsize 11000
+
+quiet xi: poisson d_homi_male_15_39 pob_male_15_39 i.date i.idunico lpub_after06 ///
+lpub_after612 lpub_after12 lieupub_after06 lieupub_after612 lieupub_after12 ///
+if date>=563 & date<=611 & idunico!=8037 [iw = weights_treat_lead_dto], ///
+vce(cluster idunico)
+
+estimates table, keep(lpub_after06 lpub_after612 lpub_after12 lieupub_after06 ///
+lieupub_after612 lieupub_after12) b(%9.3fc) se(%9.3fc) t(%9.3fc) p(%9.3fc) style(columns)
+ereturn list
+```
+
+```{stata lower-table02-rep-model01, error=FALSE, warning=FALSE, echo=TRUE, cache=TRUE}
+// Table 02: Lower Panel
+sysuse ./replication.data.beheadings.march.15.dta, clear
+tsset idunico date
+set matsize 11000
+
+// Model 01
+quiet xi: poisson d_homi_not_male_15_39 pob_not_male_15_39 i.date i.idunico lpub_after06 ///
+lpub_after612 lpub_after12 lieupub_after06 lieupub_after612 lieupub_after12 ///
+if treat_leader==1 & date>=563 & date<=611 & idunico!=8037, ///
+vce(cluster idunico)
+
+estimates table, keep(lpub_after06 lpub_after612 lpub_after12 lieupub_after06 ///
+lieupub_after612 lieupub_after12) b(%9.3fc) se(%9.3fc) t(%9.3fc) p(%9.3fc) style(columns)
+ereturn list
+```
+
+```{stata lower-table02-rep-model03, error=FALSE, warning=FALSE, echo=TRUE, cache=TRUE}
+// Model 03
+sysuse ./replication.data.beheadings.march.15.dta, clear
+tsset idunico date
+set matsize 11000
+
+quiet xi: poisson d_homi_not_male_15_39 pob_not_male_15_39 i.date i.idunico lpub_after06 ///
+lpub_after612 lpub_after12 lieupub_after06 lieupub_after612 lieupub_after12 ///
+if date>=563 & date<=611 & idunico!=8037 [iw = weights_treat_lead_rest], ///
+vce(cluster idunico)
+
+estimates table, keep(lpub_after06 lpub_after612 lpub_after12 lieupub_after06 ///
+lieupub_after612 lieupub_after12) b(%9.3fc) se(%9.3fc) t(%9.3fc) p(%9.3fc) style(columns)
+ereturn list
+```
+
+\newpage 
+
+# Session Information
+\label{sec:sessionInfo}
+
+```{r session, cache=T}
+sessionInfo()
+```
+
+\newpage
+\setlength{\parindent}{0cm}
+\setlength{\parskip}{5pt}
+
