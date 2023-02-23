@@ -1,0 +1,179 @@
+---
+title:  |
+        | The Multi100 Project:
+        | Task 02
+author: 
+date: \today
+abstractspacing: double
+fontsize: 12pt
+margin: 2cm
+urlcolor: darkblue
+linkcolor: Mahogany
+citecolor: Mahogany
+spacing: double
+papersize: a4paper
+bibliography: references.bib
+biblio-style: apalike
+output:
+  pdf_document:
+    citation_package: natbib
+    fig_caption: yes
+    number_sections: yes
+    keep_tex: no
+    toc: yes
+    toc_depth: 3
+    template: article-template.latex
+---
+
+# Introduction
+\label{sec:intro}
+
+This Markdown file contains the code used to reanalyse the findings presented
+in the paper "The Beheading of Criminal Organizations and the Dynamics of
+Violence in Mexico" by @calderon2015beheading. My analyst ID is `9EFM2_2`, and
+the paper ID is `Caldero_n_JournConflictRes_2015_Nv99`. The instructions for
+this task are: "_Your analysis should produce a single, main result in terms of
+statistical families of z-, t-, F-, or X^2^ tests (or their alternative or
+non-parametric versions). You should be as inclusive as possible regarding your
+sample choice. You should disregard spillover effects in neighbouring
+municipalities in your analysis. You should disregard strategic features of the
+municipalities in your analysis._" The article files can be accessed
+at <https://osf.io/bsv24/?view_only=84df9267c74b482fa3cf2f4dc611ee48>.
+
+As requested, I have focused exclusively on the main results presented in the
+paper, the effect of government interventions on violence in treated
+municipalities. I have also included Ciudad Juárez, the most violent city in
+the dataset ($idunico = 8037$), in the analysis [@calderon2015beheading, 9]. I
+have used negative binomials regressions both with and without the weights
+provided by the authors. The analyses presented here were conducted using Stata
+15 and the `Statamarkdown` package for `R` [@rbase2022].
+
+The findings suggest that removing the leader of a criminal organization can
+decrease violence, but only in the weighted sample (model 03). After the
+capture, there was a significant impact on both homicides associated with drug
+trafficking and the general population for up to six months ($z = 2.47$ and $z
+= 2.41$, respectively). However, the effect was not significant in the period
+between six and twelve months, as in the original paper. 
+
+# Reanalysis
+\label{sec:reanalysis}
+
+Here, I am sharing the code used to reanalyze the results from the paper. The
+first model assesses the impact of leadership capture on homicides that are
+potentially associated with drug trafficking. The second model examines the
+same effect but incorporates the weights estimated by the authors. Both models
+feature Ciudad Juárez. The original findings are presented in Table 02 of the
+paper [@calderon2015beheading, 18].
+
+To start the analysis, I load the data and install the required packages.
+
+```{r packages, message=FALSE, warning=FALSE, echo=TRUE}
+# Install necessary packages
+r <- getOption("repos")
+r["CRAN"] <- "https://cran.rstudio.com/"
+options(repos = r)
+
+# List of packages
+packages <- c("devtools", "knitr", "rmarkdown", "tidyverse")
+
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+invisible(lapply(packages, library, character.only = TRUE))
+
+# Install and load Statamarkdown
+devtools::install_github("Hemken/Statamarkdown")
+library(Statamarkdown)
+```
+
+The first two models are presented below. Results indicate that the unweighted
+model did not find a significant effect of leadership captures on homicides
+among young males. In contrast, the weighted model showed a significant effect,
+but this effect was only significant in the first six months following
+leadership capture.
+
+```{stata upper-table02-rep-model01, error=FALSE, warning=FALSE, echo=TRUE, cache=TRUE}
+// Load data
+sysuse ./replication.data.beheadings.march.15.dta, clear
+tsset idunico date
+set matsize 11000
+
+// Table 02: Upper Panel
+
+// Model 01
+
+quiet xi: nbreg d_homi_male_15_39 pob_male_15_39 i.date i.idunico lpub_after06 ///
+lpub_after612 lpub_after12 lieupub_after06 lieupub_after612 lieupub_after12 ///
+if treat_leader==1 & date>=563 & date<=611, vce(cluster idunico)
+
+estimates table, keep(lpub_after06 lpub_after612 lpub_after12 lieupub_after06 ///
+lieupub_after612 lieupub_after12) b(%9.3fc) se(%9.3fc) t(%9.3fc) p(%9.3fc) style(columns)
+ereturn list
+```
+
+```{stata upper-table02-rep-model03, error=FALSE, warning=FALSE, echo=TRUE, cache=TRUE}
+// Model 03
+sysuse ./replication.data.beheadings.march.15.dta, clear
+tsset idunico date
+set matsize 11000
+
+quiet xi: nbreg d_homi_male_15_39 pob_male_15_39 i.date i.idunico lpub_after06 ///
+lpub_after612 lpub_after12 lieupub_after06 lieupub_after612 lieupub_after12 ///
+if date>=563 & date<=611 [iw = weights_treat_lead_dto], vce(cluster idunico)
+
+estimates table, keep(lpub_after06 lpub_after612 lpub_after12 lieupub_after06 ///
+lieupub_after612 lieupub_after12) b(%9.3fc) se(%9.3fc) t(%9.3fc) p(%9.3fc) style(columns)
+ereturn list
+```
+
+The models presented below replicate the lower panel of Table 02 and estimate
+the impact of leadership captures on homicides among the general population.
+The first model does not include the weights, while the second model does.
+Similarly to the previous models, the unweighted model did not show a
+statistically significant effect, but the weighted model did. The effect also
+vanishes after six months.
+
+```{stata upper-table02-rep-model01a, error=FALSE, warning=FALSE, echo=TRUE, cache=TRUE}
+// Table 02: Lower Panel
+sysuse ./replication.data.beheadings.march.15.dta, clear
+tsset idunico date
+set matsize 11000
+
+// Model 01
+
+quiet xi: nbreg d_homi_not_male_15_39 pob_not_male_15_39 i.date i.idunico ///
+lpub_after06 lpub_after612 lpub_after12 lieupub_after06 lieupub_after612 ///
+lieupub_after12 if treat_leader==1 & date>=563 & date<=611, vce(cluster idunico)
+
+estimates table, keep(lpub_after06 lpub_after612 lpub_after12 lieupub_after06 ///
+lieupub_after612 lieupub_after12) b(%9.3fc) se(%9.3fc) t(%9.3fc) p(%9.3fc) style(columns)
+ereturn list
+```
+
+```{stata upper-table02-rep-model03a, error=FALSE, warning=FALSE, echo=TRUE, cache=TRUE}
+// Model 03
+sysuse ./replication.data.beheadings.march.15.dta, clear
+tsset idunico date
+set matsize 11000
+
+quiet xi: nbreg d_homi_not_male_15_39 pob_not_male_15_39 i.date i.idunico ///
+lpub_after06 lpub_after612 lpub_after12 lieupub_after06 lieupub_after612 ///
+lieupub_after12 if date>=563 & date<=611 [iw = weights_treat_lead_rest], vce(cluster idunico)
+
+estimates table, keep(lpub_after06 lpub_after612 lpub_after12 lieupub_after06 ///
+lieupub_after612 lieupub_after12) b(%9.3fc) se(%9.3fc) t(%9.3fc) p(%9.3fc) style(columns)
+ereturn list
+```
+
+# Session Information
+\label{sec:sessionInfo}
+
+```{r session, cache=T}
+sessionInfo()
+```
+
+\newpage
+\setlength{\parindent}{0cm}
+\setlength{\parskip}{5pt}
+
